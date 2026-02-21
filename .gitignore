@@ -9,10 +9,11 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
+/doc
+/doc/
 # testing
 /coverage
-
+.gitignore
 # next.js
 /.next/
 /out/
