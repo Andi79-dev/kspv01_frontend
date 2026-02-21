@@ -23,6 +23,7 @@ import {
 // API base URL - adjust based on your environment
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:4021/api";
+// process.env.NEXT_PUBLIC_API_URL || "http://localhost:4021/api";
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -102,8 +103,9 @@ export const authApi = {
       // Show loading toast
       loadingId = toast.loading("Logging in...");
 
-      // The actual API response is: { data: { id, username, nama, roleId, ... } }
-      // We need to transform it to match LoginResponse: { user: {...}, token: "..." }
+      // Make POST request to login endpoint
+      // We use response.data.data because Axios wraps the response,
+      // and the backend wraps the result in a 'data' object
       const response = await apiClient.post<{ data: UserResponse }>(
         "/users/login",
         payload,
@@ -117,13 +119,29 @@ export const authApi = {
         throw new Error(message);
       }
 
+      // Handle if response data is null or undefined
+      if (!response.data) {
+        const message = "Invalid response: No data received from server";
+        toast.error(message, { id: loadingId });
+        throw new Error(message);
+      }
+
       // Transform the response to match expected format
       // Since backend doesn't return a token, we'll generate a simple one based on user data
       const userData = response.data.data;
+
+      // Handle if userData is null or undefined
+      if (!userData) {
+        const message = "Invalid response: User data not found";
+        toast.error(message, { id: loadingId });
+        throw new Error(message);
+      }
+
       const token = `token_${userData.id}_${Date.now()}`;
 
-      // Dismiss loading and show success
+      // Dismiss loading and show success toast
       toast.dismiss(loadingId);
+      toast.success(`Login berhasil! Selamat datang, ${userData.nama}!`);
 
       return {
         user: userData,
