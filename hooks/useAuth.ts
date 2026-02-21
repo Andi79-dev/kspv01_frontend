@@ -3,11 +3,12 @@ import { useRouter } from "next/navigation";
 import { authApi, menusApi, permissionsApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import type { LoginPayload } from "@/types";
+import { handleApiError, showErrorToast } from "@/lib/errorHandler";
 
 // Login mutation hook
 export function useLogin() {
   const router = useRouter();
-  const { login, setMenus, setPermissions } = useAuthStore();
+  const { login, setMenus, setPermissions, setLoading } = useAuthStore();
 
   return useMutation({
     mutationFn: (payload: LoginPayload) => authApi.login(payload),
@@ -20,6 +21,7 @@ export function useLogin() {
 
       if (!user || !token) {
         console.error("Invalid login response - empty or malformed:", data);
+        showErrorToast("Login failed: Invalid response from server");
         throw new Error(
           "Login failed: Invalid response from server. Please check if the backend is running.",
         );
@@ -28,6 +30,9 @@ export function useLogin() {
       login(user, token);
 
       try {
+        // Set loading state
+        setLoading(true);
+
         // Fetch menus and permissions using roleId
         // API endpoint: /permissions/role/{roleId}
         const [menus, permissions] = await Promise.all([
@@ -38,11 +43,19 @@ export function useLogin() {
         setMenus(menus);
         setPermissions(permissions);
       } catch (error) {
-        console.error("Failed to fetch menus/permissions:", error);
+        // Handle error but don't block login - menus/permissions can be fetched later
+        const message = handleApiError(error);
+        console.error("Failed to fetch menus/permissions:", message);
+      } finally {
+        setLoading(false);
       }
 
       // Redirect to dashboard
       router.push("/dashboard");
+    },
+    onError: (error) => {
+      // Error is already handled in authApi.login with toast
+      console.error("Login error:", error);
     },
   });
 }

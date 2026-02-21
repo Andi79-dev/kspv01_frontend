@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import AuthInitializer from "@/components/AuthInitializer";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ApiStatusBanner from "@/components/ApiStatusBanner";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
           <Providers>
             <AuthInitializer>{children}</AuthInitializer>
           </Providers>
+          <Toaster position="top-right" />
         </ErrorBoundary>
       </body>
     </html>

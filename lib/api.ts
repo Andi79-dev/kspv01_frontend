@@ -3,6 +3,7 @@ import axios, {
   AxiosError,
   InternalAxiosRequestConfig,
 } from "axios";
+import { toast } from "sonner";
 import type {
   LoginPayload,
   LoginResponse,
@@ -13,6 +14,11 @@ import type {
   ApiResponse,
   Paging,
 } from "@/types";
+import {
+  getStatusMessage,
+  getAxiosErrorMessage,
+  handleApiError,
+} from "./errorHandler";
 
 // API base URL - adjust based on your environment
 const API_BASE_URL =
@@ -58,10 +64,44 @@ apiClient.interceptors.response.use(
   },
 );
 
+/**
+ * Health check API - lightweight endpoint for checking API availability
+ * Uses /roles endpoint to avoid duplicate /menus calls
+ */
+export const healthApi = {
+  /**
+   * Check if the API server is reachable
+   * @returns Promise<boolean> - true if API is healthy, false otherwise
+   */
+  check: async (): Promise<boolean> => {
+    try {
+      // Attempt lightweight HEAD request first
+      const response = await apiClient.head("/roles", { timeout: 5000 });
+      return response.status >= 200 && response.status < 400;
+    } catch {
+      // Fallback: try minimal GET request if HEAD fails
+      try {
+        const response = await apiClient.get("/roles", {
+          params: { page: 1, size: 1 },
+          timeout: 5000,
+        });
+        return response.status >= 200 && response.status < 400;
+      } catch {
+        return false;
+      }
+    }
+  },
+};
+
 // Auth API
 export const authApi = {
   login: async (payload: LoginPayload): Promise<LoginResponse> => {
+    let loadingId: string | number | undefined;
+
     try {
+      // Show loading toast
+      loadingId = toast.loading("Logging in...");
+
       // The actual API response is: { data: { id, username, nama, roleId, ... } }
       // We need to transform it to match LoginResponse: { user: {...}, token: "..." }
       const response = await apiClient.post<{ data: UserResponse }>(
@@ -69,17 +109,38 @@ export const authApi = {
         payload,
       );
 
+      // Check response status (axios uses status, not ok)
+      const status = response.status;
+      if (status < 200 || status >= 300) {
+        const message = getStatusMessage(status);
+        toast.error(message, { id: loadingId });
+        throw new Error(message);
+      }
+
       // Transform the response to match expected format
       // Since backend doesn't return a token, we'll generate a simple one based on user data
       const userData = response.data.data;
       const token = `token_${userData.id}_${Date.now()}`;
+
+      // Dismiss loading and show success
+      toast.dismiss(loadingId);
 
       return {
         user: userData,
         token: token,
       };
     } catch (error) {
+      // Handle error and show toast
+      const message = getAxiosErrorMessage(error);
       console.error("Login API error:", error);
+
+      // Dismiss loading toast first
+      if (loadingId) {
+        toast.dismiss(loadingId);
+      }
+
+      // Show error toast
+      toast.error(message);
       throw error;
     }
   },
@@ -97,78 +158,128 @@ export const usersApi = {
     page: number = 1,
     size: number = 10,
   ): Promise<{ data: UserResponse[]; paging: Paging }> => {
-    const response = await apiClient.get<ApiResponse<UserResponse[]>>(
-      "/users",
-      {
-        params: { page, size },
-      },
-    );
-    return {
-      data: response.data.data,
-      paging: response.data.paging!,
-    };
+    try {
+      const response = await apiClient.get<ApiResponse<UserResponse[]>>(
+        "/users",
+        {
+          params: { page, size },
+        },
+      );
+      return {
+        data: response.data.data,
+        paging: response.data.paging!,
+      };
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   getById: async (id: number): Promise<UserResponse> => {
-    const response = await apiClient.get<ApiResponse<UserResponse>>(
-      `/users/${id}`,
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.get<ApiResponse<UserResponse>>(
+        `/users/${id}`,
+      );
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   create: async (
     user: Partial<UserResponse> & { password: string },
   ): Promise<UserResponse> => {
-    const response = await apiClient.post<ApiResponse<UserResponse>>(
-      "/users",
-      user,
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.post<ApiResponse<UserResponse>>(
+        "/users",
+        user,
+      );
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   update: async (
     id: number,
     user: Partial<UserResponse>,
   ): Promise<UserResponse> => {
-    const response = await apiClient.put<ApiResponse<UserResponse>>(
-      `/users/${id}`,
-      user,
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.put<ApiResponse<UserResponse>>(
+        `/users/${id}`,
+        user,
+      );
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/users/${id}`);
+    try {
+      await apiClient.delete(`/users/${id}`);
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 };
 
 // Roles API
 export const rolesApi = {
   getAll: async (): Promise<Role[]> => {
-    const response = await apiClient.get<ApiResponse<Role[]>>("/roles");
-    return response.data.data;
+    try {
+      const response = await apiClient.get<ApiResponse<Role[]>>("/roles");
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   getById: async (id: number): Promise<Role> => {
-    const response = await apiClient.get<ApiResponse<Role>>(`/roles/${id}`);
-    return response.data.data;
+    try {
+      const response = await apiClient.get<ApiResponse<Role>>(`/roles/${id}`);
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   create: async (role: Partial<Role>): Promise<Role> => {
-    const response = await apiClient.post<ApiResponse<Role>>("/roles", role);
-    return response.data.data;
+    try {
+      const response = await apiClient.post<ApiResponse<Role>>("/roles", role);
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   update: async (id: number, role: Partial<Role>): Promise<Role> => {
-    const response = await apiClient.patch<ApiResponse<Role>>(
-      `/roles/${id}`,
-      role,
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.patch<ApiResponse<Role>>(
+        `/roles/${id}`,
+        role,
+      );
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/roles/${id}`);
+    try {
+      await apiClient.delete(`/roles/${id}`);
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 };
 
@@ -195,44 +306,74 @@ export const menusApi = {
     page: number = 1,
     size: number = 10,
   ): Promise<{ data: Menu[]; paging: Paging }> => {
-    const response = await apiClient.get<ApiResponse<Menu[]>>("/menus", {
-      params: { page, size },
-    });
-    return {
-      data: response.data.data,
-      paging: response.data.paging || {
-        current_page: 1,
-        size: size,
-        total_page: Math.ceil(response.data.data.length / size),
-      },
-    };
+    try {
+      const response = await apiClient.get<ApiResponse<Menu[]>>("/menus", {
+        params: { page, size },
+      });
+      return {
+        data: response.data.data,
+        paging: response.data.paging || {
+          current_page: 1,
+          size: size,
+          total_page: Math.ceil(response.data.data.length / size),
+        },
+      };
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   getAllNoPagination: async (): Promise<Menu[]> => {
-    const response = await apiClient.get<ApiResponse<Menu[]>>("/menus");
-    return response.data.data;
+    try {
+      const response = await apiClient.get<ApiResponse<Menu[]>>("/menus");
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   getById: async (id: number): Promise<Menu> => {
-    const response = await apiClient.get<ApiResponse<Menu>>(`/menus/${id}`);
-    return response.data.data;
+    try {
+      const response = await apiClient.get<ApiResponse<Menu>>(`/menus/${id}`);
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   create: async (menu: MenuCreateInput): Promise<Menu> => {
-    const response = await apiClient.post<ApiResponse<Menu>>("/menus", menu);
-    return response.data.data;
+    try {
+      const response = await apiClient.post<ApiResponse<Menu>>("/menus", menu);
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   update: async (id: number, menu: MenuUpdateInput): Promise<Menu> => {
-    const response = await apiClient.put<ApiResponse<Menu>>(
-      `/menus/${id}`,
-      menu,
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.put<ApiResponse<Menu>>(
+        `/menus/${id}`,
+        menu,
+      );
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/menus/${id}`);
+    try {
+      await apiClient.delete(`/menus/${id}`);
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 };
 
@@ -257,60 +398,90 @@ export const permissionsApi = {
     page: number = 1,
     size: number = 10,
   ): Promise<{ data: Permission[]; paging: Paging }> => {
-    const response = await apiClient.get<ApiResponse<Permission[]>>(
-      "/permissions",
-      {
-        params: { page, size },
-      },
-    );
-    return {
-      data: response.data.data,
-      paging: response.data.paging!,
-    };
+    try {
+      const response = await apiClient.get<ApiResponse<Permission[]>>(
+        "/permissions",
+        {
+          params: { page, size },
+        },
+      );
+      return {
+        data: response.data.data,
+        paging: response.data.paging!,
+      };
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   // Get permissions by roleId using path parameter: /permissions/role/{roleId}
   getByRoleId: async (roleId: number): Promise<Permission[]> => {
-    const response = await apiClient.get<ApiResponse<Permission[]>>(
-      `/permissions/role/${roleId}`,
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.get<ApiResponse<Permission[]>>(
+        `/permissions/role/${roleId}`,
+      );
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   create: async (permission: PermissionCreateInput): Promise<Permission> => {
-    const response = await apiClient.post<ApiResponse<Permission>>(
-      "/permissions",
-      permission,
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.post<ApiResponse<Permission>>(
+        "/permissions",
+        permission,
+      );
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   update: async (
     id: number,
     permission: PermissionUpdateInput,
   ): Promise<Permission> => {
-    const response = await apiClient.put<ApiResponse<Permission>>(
-      `/permissions/${id}`,
-      permission,
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.put<ApiResponse<Permission>>(
+        `/permissions/${id}`,
+        permission,
+      );
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/permissions/${id}`);
+    try {
+      await apiClient.delete(`/permissions/${id}`);
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   updateByRole: async (
     roleId: number,
     permissions: Partial<Permission>[],
   ): Promise<Permission[]> => {
-    const response = await apiClient.put<ApiResponse<Permission[]>>(
-      `/permissions/role/${roleId}`,
-      {
-        permissions,
-      },
-    );
-    return response.data.data;
+    try {
+      const response = await apiClient.put<ApiResponse<Permission[]>>(
+        `/permissions/role/${roleId}`,
+        {
+          permissions,
+        },
+      );
+      return response.data.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 };
 

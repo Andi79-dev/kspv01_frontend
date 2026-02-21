@@ -14,6 +14,7 @@ import { DataTable, createActionColumn } from "@/components/modules";
 import { MenuForm } from "@/components/modules/menus/MenuForm";
 import { Icon } from "@/components/layout/Icon";
 import type { Menu } from "@/types";
+import { handleApiError, showSuccessToast } from "@/lib/errorHandler";
 
 // Icons
 import { Plus } from "lucide-react";
@@ -169,15 +170,17 @@ export default function MenusPage() {
           id: selectedMenu.id,
           menu: transformedData,
         });
+        showSuccessToast("Menu updated successfully");
       } else {
         await createMenu.mutateAsync(transformedData);
+        showSuccessToast("Menu created successfully");
       }
 
       setIsDialogOpen(false);
       setSelectedMenu(null);
       refetch();
     } catch (error) {
-      console.error("Error saving menu:", error);
+      handleApiError(error);
     }
   }
 
@@ -185,11 +188,12 @@ export default function MenusPage() {
     if (selectedMenu) {
       try {
         await deleteMenu.mutateAsync(selectedMenu.id);
+        showSuccessToast("Menu deleted successfully");
         setIsDeleteOpen(false);
         setSelectedMenu(null);
         refetch();
       } catch (error) {
-        console.error("Error deleting menu:", error);
+        handleApiError(error);
       }
     }
   }

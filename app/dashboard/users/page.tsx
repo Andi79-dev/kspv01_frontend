@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/authStore";
 import { DataTable, createActionColumn } from "@/components/modules";
 import { UserForm } from "@/components/modules/users/UserForm";
 import type { UserResponse } from "@/types";
+import { handleApiError, showSuccessToast } from "@/lib/errorHandler";
 
 // Icons
 import { Plus } from "lucide-react";
@@ -139,6 +140,7 @@ export default function UsersPage() {
             status: data.status ?? true,
           },
         });
+        showSuccessToast("User updated successfully");
       } else {
         // Create new user
         await createUser.mutateAsync({
@@ -148,6 +150,7 @@ export default function UsersPage() {
           status: data.status ?? true,
           password: data.password || "",
         });
+        showSuccessToast("User created successfully");
       }
 
       // Close dialog and refresh data
@@ -155,7 +158,7 @@ export default function UsersPage() {
       setSelectedUser(null);
       refetch();
     } catch (error) {
-      console.error("Error saving user:", error);
+      handleApiError(error);
     }
   }
 
@@ -163,11 +166,12 @@ export default function UsersPage() {
     if (selectedUser) {
       try {
         await deleteUser.mutateAsync(selectedUser.id);
+        showSuccessToast("User deleted successfully");
         setIsDeleteOpen(false);
         setSelectedUser(null);
         refetch();
       } catch (error) {
-        console.error("Error deleting user:", error);
+        handleApiError(error);
       }
     }
   }

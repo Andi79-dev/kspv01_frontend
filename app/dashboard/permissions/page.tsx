@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/authStore";
 import { DataTable, createActionColumn } from "@/components/modules";
 import { PermissionForm } from "@/components/modules/permissions/PermissionForm";
 import type { Permission } from "@/types";
+import { handleApiError, showSuccessToast } from "@/lib/errorHandler";
 
 // Icons
 import { Plus, Check, X } from "lucide-react";
@@ -187,15 +188,17 @@ export default function PermissionsPage() {
             can_approve: data.can_approve,
           },
         });
+        showSuccessToast("Permission updated successfully");
       } else {
         await createPermission.mutateAsync(data);
+        showSuccessToast("Permission created successfully");
       }
 
       setIsDialogOpen(false);
       setSelectedPermission(null);
       refetch();
     } catch (error) {
-      console.error("Error saving permission:", error);
+      handleApiError(error);
     }
   }
 
@@ -203,11 +206,12 @@ export default function PermissionsPage() {
     if (selectedPermission) {
       try {
         await deletePermission.mutateAsync(selectedPermission.id);
+        showSuccessToast("Permission deleted successfully");
         setIsDeleteOpen(false);
         setSelectedPermission(null);
         refetch();
       } catch (error) {
-        console.error("Error deleting permission:", error);
+        handleApiError(error);
       }
     }
   }

@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/authStore";
 import { DataTable, createActionColumn } from "@/components/modules";
 import { RoleForm } from "@/components/modules/roles/RoleForm";
 import type { Role } from "@/types";
+import { handleApiError, showSuccessToast } from "@/lib/errorHandler";
 
 // Icons
 import { Plus } from "lucide-react";
@@ -96,15 +97,17 @@ export default function RolesPage() {
           id: selectedRole.id,
           role: data,
         });
+        showSuccessToast("Role updated successfully");
       } else {
         await createRole.mutateAsync(data);
+        showSuccessToast("Role created successfully");
       }
 
       setIsDialogOpen(false);
       setSelectedRole(null);
       refetch();
     } catch (error) {
-      console.error("Error saving role:", error);
+      handleApiError(error);
     }
   }
 
@@ -112,11 +115,12 @@ export default function RolesPage() {
     if (selectedRole) {
       try {
         await deleteRole.mutateAsync(selectedRole.id);
+        showSuccessToast("Role deleted successfully");
         setIsDeleteOpen(false);
         setSelectedRole(null);
         refetch();
       } catch (error) {
-        console.error("Error deleting role:", error);
+        handleApiError(error);
       }
     }
   }

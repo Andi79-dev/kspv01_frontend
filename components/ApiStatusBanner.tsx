@@ -4,34 +4,39 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { healthApi } from "@/lib/api";
 
 interface ApiStatusBannerProps {
   className?: string;
 }
 
 export function ApiStatusBanner({ className }: ApiStatusBannerProps) {
+  // State for tracking API connectivity status
   const [isOnline, setIsOnline] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
 
-  // Check API status
-  const checkApiStatus = async () => {
+  /**
+   * Checks API server connectivity using the dedicated health check endpoint.
+   * Updates online status based on the health check result.
+   */
+  const checkApiStatus = async (): Promise<void> => {
     setIsChecking(true);
+
     try {
-      const API_BASE_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4021/api";
+      // Use dedicated health check API to avoid duplicate /menus calls
+      const isHealthy: boolean = await healthApi.check();
 
-      const response = await fetch(`${API_BASE_URL}/menus`, {
-        method: "HEAD",
-        cache: "no-cache",
-      });
-
-      // If we get here, API is reachable (even if it returns an error, the server is up)
-      setIsOnline(true);
-      setIsVisible(false);
+      if (isHealthy) {
+        setIsOnline(true);
+        setIsVisible(false);
+      } else {
+        setIsOnline(false);
+        setIsVisible(true);
+      }
     } catch (error) {
       // Network error - API is not reachable
+      console.error("API Status Check Error:", error);
       setIsOnline(false);
       setIsVisible(true);
     } finally {
@@ -39,22 +44,22 @@ export function ApiStatusBanner({ className }: ApiStatusBannerProps) {
     }
   };
 
-  // Check status on mount and periodically
+  // Check status on mount and set up periodic polling
   useEffect(() => {
-    // Initial check
+    // Initial check on component mount
     checkApiStatus();
 
-    // Periodic check every 30 seconds
-    const interval = setInterval(() => {
+    // Periodic health check every 30 seconds
+    const intervalId: ReturnType<typeof setInterval> = setInterval(() => {
       checkApiStatus();
     }, 30000);
 
-    // Listen for online/offline events
-    const handleOnline = () => {
+    // Listen for browser online/offline events
+    const handleOnline = (): void => {
       checkApiStatus();
     };
 
-    const handleOffline = () => {
+    const handleOffline = (): void => {
       setIsOnline(false);
       setIsVisible(true);
     };
@@ -62,21 +67,21 @@ export function ApiStatusBanner({ className }: ApiStatusBannerProps) {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
+    // Cleanup: clear interval and remove event listeners
     return () => {
-      clearInterval(interval);
+      clearInterval(intervalId);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
-  // Handle retry
-  const handleRetry = () => {
-    setRetryCount((prev) => prev + 1);
+  /** Retry connection on button click */
+  const handleRetry = (): void => {
     checkApiStatus();
   };
 
-  // Handle dismiss
-  const handleDismiss = () => {
+  /** Dismiss the banner */
+  const handleDismiss = (): void => {
     setIsVisible(false);
   };
 
