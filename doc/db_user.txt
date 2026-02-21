@@ -1,0 +1,54 @@
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String 
+  nama      String
+  roleId    Int
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  role Role @relation(fields: [roleId], references: [id])
+  
+  // Audit Trail: Relasi ke transaksi yang dibuat oleh user ini 
+  transaksiDibuat    Transaksi[]         @relation("UserCreated")
+  draftDibuat        TransaksiKasDraft[] @relation("DraftCreated")
+}
+
+model Role {
+  id          Int          @id @default(autoincrement())
+  nama_role   String       @unique // Contoh: "KASIR" (Maker), "SUPERVISOR" (Checker), "MANAGER" (Approver)
+  deskripsi   String?
+  permissions Permission[] // Relasi untuk detil hak akses menu
+  users       User[]
+}
+
+model Menu {
+  id           Int          @id @default(autoincrement())
+  nama_menu    String       // Contoh: "Transaksi", "Simpanan Pokok"
+  icon         String?      // Contoh: "LayoutDashboard", "UserIcon" (untuk Lucide/FontAwesome)
+  url          String?      // Path URL, null jika ini adalah parent/folder menu
+  order        Int          @default(0) // Untuk mengurutkan tampilan menu
+  
+  // Self-relation untuk Sub-menu
+  parentId     Int?
+  parent       Menu?        @relation("MenuToSubmenu", fields: [parentId], references: [id])
+  subMenus     Menu[]       @relation("MenuToSubmenu")
+
+  permissions  Permission[]
+}
+
+// Update model Permission untuk relasi ke Menu yang baru
+model Permission {
+  id          Int      @id @default(autoincrement())
+  roleId      Int
+  menuId      Int      // Relasi ke model Menu
+  can_view    Boolean  @default(false)
+  can_edit    Boolean  @default(false)
+  can_approve Boolean  @default(false)
+
+  role        Role     @relation(fields: [roleId], references: [id])
+  menu        Menu     @relation(fields: [menuId], references: [id])
+
+  @@unique([roleId, menuId]) // Satu role hanya punya satu aturan per menu
+}

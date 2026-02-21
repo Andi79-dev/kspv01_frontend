@@ -1,0 +1,97 @@
+URL : http://localhost:4021/api/users/login
+Method : POST
+{
+  "username": "admin",
+  "password": "admin123456"
+}
+
+http://localhost:4021/api/roles
+{
+  "data": [
+    {
+      "id": 1,
+      "nama_role": "ADMIN",
+      "deskripsi": "Administrator sistem dengan akses penuh ke seluruh modul"
+    },
+    {
+      "id": 2,
+      "nama_role": "OPERATOR",
+      "deskripsi": "Operator Pengolahan Data"
+    }
+  ],
+  "paging": {
+    "current_page": 1,
+    "size": 10,
+    "total_page": 1
+  }
+}
+http://localhost:4021/api/menus
+{
+  "data": [
+    {
+      "id": 1,
+      "nama_menu": "Master",
+      "icon": "DatabaseIcon",
+      "url": null,
+      "order": 1,
+      "parentId": null,
+      "subMenus": [
+        {
+          "id": 2,
+          "nama_menu": "Daftar Anggota",
+          "icon": "UsersIcon",
+          "url": "/master/anggota",
+          "order": 1,
+          "parentId": 1,
+          "subMenus": []
+        }
+      ]
+    }
+  ]
+}
+http://localhost:4021/api/permissions
+{
+  "data": [
+    {
+      "id": 1,
+      "roleId": 1,
+      "menuId": 1,
+      "can_view": true,
+      "can_edit": true,
+      "can_approve": false,
+      "role": {
+        "id": 1,
+        "nama_role": "ADMIN",
+        "deskripsi": "Administrator sistem dengan akses penuh ke seluruh modul"
+      },
+      "menu": {
+        "id": 1,
+        "nama_menu": "Master",
+        "icon": "DatabaseIcon",
+        "url": null,
+        "order": 1,
+        "parentId": null
+      }
+    }
+  ]
+}
+http://localhost:4021/api/users
+{
+  "data": [
+    {
+      "id": 1,
+      "username": "admin",
+      "nama": "Ahmad Administrator",
+      "roleId": 1,
+      "nama_role": "ADMIN",
+      "status": true,
+      "createdAt": "2026-02-20T17:19:12.694Z",
+      "updatedAt": "2026-02-20T17:19:12.694Z"
+    }
+  ],
+  "paging": {
+    "current_page": 1,
+    "size": 10,
+    "total_page": 1
+  }
+}

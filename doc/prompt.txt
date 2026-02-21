@@ -1,0 +1,55 @@
+Build a complete Role-Based Access Control (RBAC) Frontend using Next.js 16 (App Router). The system must handle Authentication, Dynamic Sidebar, and Reusable CRUD modules with strict Type-Safety.
+
+1. STANDARDS CODING & TECH STACK
+
+Framework: Next.js 16 (App Router) with TypeScript.
+State Management: Zustand for Auth Store and Global UI State.
+Data Fetching: TanStack Query v5 (React Query) for all API interactions.
+Styling: Tailwind CSS with Shadcn UI components (Zinc/Slate theme).
+Form Handling: React Hook Form with Zod validation.
+Icons: Lucide React (mapped dynamically from database strings).
+Type-Safe: Zero 'any' usage. All interfaces must match the Prisma schema (User, Role, Menu, Permission).
+Auth: Password handled via bcrypt on backend; frontend must manage session via Zustand.
+
+2. FOLDER STRUCTURE COMPLIANCE
+Organize the project as follows:
+app: Routes and Pages 
+app/login, 
+app/Dashboard
+components/ui: Shadcn base components.
+components/layout: Sidebar.tsx, Navbar.tsx, Breadcrumbs.tsx.
+components/modules: modules: Generic DataTable.tsx and specific module forms (UserForm, RoleForm).
+hooks: Custom hooks (useAuth, usePermissions).
+store: Zustand store definitions (authStore.ts).
+types: TypeScript interfaces for DB models.
+lib: Axios/Fetch instances and utility functions.
+
+3. API & DATA CONTRACT
+All integration must follow these endpoints:
+Auth: POST /api/users/login (Payload: username, password).
+Users: GET /api/users (Includes Role object).
+Roles: GET /api/roles.
+Menus: GET /api/menus (Recursive subMenus structure).
+Permissions: GET /api/permissions?roleId={id} (Returns can_view, can_edit, can_approve).
+Pagination: Every list response includes a paging object (current_page, size, total_page).
+
+4. CORE FEATURES IMPLEMENTATION
+Login Page: Centered card, loading states on buttons, Zod validation for credentials.
+Dynamic Sidebar: - Fetch /api/menus.
+Recursive rendering: If parentId is null, it's a Top Menu.
+Sub-menus are rendered within collapsible triggers.
+Sort menus by the order field.
+TanStack DataTable:
+Generic <TData, TValue> implementation.
+Server-side pagination using the paging object.
+Action column: Edit (dialog) and Delete (confirmation alert).
+Relational mapping: Show role.nama_role and menu.nama_menu in the Permissions table.
+RBAC Guard: - Middleware or HOC must check can_view from the Permissions table before rendering a route.
+Hide "Add/Edit" buttons if can_edit is false.
+
+
+5. VISUAL STYLE GUIDE
+Use a clean, professional "Enterprise" look.
+Sticky Navbar with Breadcrumbs and User Profile dropdown.
+Profile Page: Card-based display showing 'Status' as a Badge (Active/Inactive) and 'createdAt' in Indonesian local date format.
+Smooth transitions for sidebar toggling and dialog animations.
